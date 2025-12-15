@@ -1,4 +1,5 @@
 {
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
   "name": "COBOL",
   "word": "_WORD",
   "rules": {
@@ -7020,6 +7021,64 @@
         ]
       }
     },
+    "exec_cics_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_EXEC"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_CICS"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "exec_block_content"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_END_EXEC"
+        }
+      ]
+    },
+    "exec_sql_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_EXEC"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_SQL"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "exec_block_content"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_END_EXEC"
+        }
+      ]
+    },
     "_statement": {
       "type": "CHOICE",
       "members": [
@@ -7070,6 +7129,14 @@
         {
           "type": "SYMBOL",
           "name": "divide_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "exec_cics_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "exec_sql_statement"
         },
         {
           "type": "SYMBOL",
@@ -19191,6 +19258,50 @@
     "OR_NE": {
       "type": "PATTERN",
       "value": "[oO][rR][ \\t]+(!=|[nN][oO][tT][ \\t]+[eE][qQ][uU][aA][lL]([ \\t]+[tT][oO])?)"
+    },
+    "_EXEC": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 10,
+        "content": {
+          "type": "PATTERN",
+          "value": "[eE][xX][eE][cC]"
+        }
+      }
+    },
+    "_CICS": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 10,
+        "content": {
+          "type": "PATTERN",
+          "value": "[cC][iI][cC][sS]"
+        }
+      }
+    },
+    "_SQL": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 10,
+        "content": {
+          "type": "PATTERN",
+          "value": "[sS][qQ][lL]"
+        }
+      }
+    },
+    "_END_EXEC": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 10,
+        "content": {
+          "type": "PATTERN",
+          "value": "[eE][nN][dD]-[eE][xX][eE][cC]"
+        }
+      }
     }
   },
   "extras": [
@@ -19249,6 +19360,10 @@
     {
       "type": "SYMBOL",
       "name": "_multiline_string"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "exec_block_content"
     }
   ],
   "inline": [],

@@ -1,0 +1,123 @@
+==================
+EXEC CICS simple inline
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC CICS RETURN END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_cics_statement
+          (exec_block_content))))))
+
+==================
+EXEC CICS with content
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC CICS
+               READ FILE('ACCTFILE')
+               INTO(WS-RECORD)
+           END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_cics_statement
+          (exec_block_content))))))
+
+==================
+EXEC SQL simple
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC SQL
+              SELECT ACCT_NUM INTO :WS-ACCT
+              FROM ACCOUNTS
+           END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_sql_statement
+          (exec_block_content))))))
+
+==================
+EXEC CICS HANDLE ABEND
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC CICS HANDLE ABEND
+                     LABEL(ABEND-ROUTINE)
+           END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_cics_statement
+          (exec_block_content))))))
+
+==================
+EXEC CICS empty content
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC CICS END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_cics_statement)))))
+
+==================
+Multiple EXEC statements
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC CICS RETURN END-EXEC.
+           EXEC SQL COMMIT END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_cics_statement
+          (exec_block_content))
+        (exec_sql_statement
+          (exec_block_content))))))

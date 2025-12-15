@@ -8,6 +8,7 @@ enum TokenType {
     LINE_COMMENT,
     COMMENT_ENTRY,
     multiline_string,
+    EXEC_BLOCK_CONTENT,  // Captures content between EXEC CICS/SQL and END-EXEC
 };
 
 void *tree_sitter_COBOL_external_scanner_create() {
@@ -16,6 +17,44 @@ void *tree_sitter_COBOL_external_scanner_create() {
 
 static bool is_white_space(int c) {
     return iswspace(c) || c == ';' || c == ',';
+}
+
+// Check if we're at the start of "END-EXEC" by looking at current char only
+// This is a quick check - we just see if current char is 'E' (potential start of END-EXEC)
+// The full validation happens in the main scan loop by tracking matched characters
+static bool is_potential_end_exec_start(int c) {
+    return towlower(c) == 'e';
+}
+
+// Scan for END-EXEC pattern
+// Returns number of characters matched (8 for complete match), 0 if no match started
+// IMPORTANT: Caller must call mark_end() BEFORE calling this function!
+// This function advances the lexer through matched characters.
+static int scan_for_end_exec(TSLexer *lexer) {
+    const char *keyword = "end-exec";
+    int matched = 0;
+
+    // NOTE: Do NOT call mark_end here - caller sets the boundary
+
+    while (keyword[matched] != '\0') {
+        if (lexer->eof(lexer)) {
+            return matched;  // Partial match, EOF
+        }
+        int c = lexer->lookahead;
+        if (towlower(c) != keyword[matched]) {
+            return matched;  // Partial or no match
+        }
+        lexer->advance(lexer, false);
+        matched++;
+    }
+
+    // Check word boundary - END-EXEC should not be followed by alphanumeric
+    int next = lexer->lookahead;
+    if (iswalnum(next) || next == '_') {
+        return matched;  // Part of a longer identifier, not a true match
+    }
+
+    return matched;  // Full match (8 characters)
 }
 
 const int number_of_comment_entry_keywords = 9;
@@ -190,6 +229,67 @@ bool tree_sitter_COBOL_external_scanner_scan(void *payload, TSLexer *lexer,
             while(lexer->lookahead == ' ' && lexer->get_column(lexer) < 72) {
                 lexer->advance(lexer, true);
             }
+        }
+    }
+
+    // EXEC CICS/SQL block content scanner
+    // Positioned after "EXEC CICS" or "EXEC SQL", scans until END-EXEC
+    // The scanner captures content BEFORE END-EXEC and leaves END-EXEC for the grammar
+    if(valid_symbols[EXEC_BLOCK_CONTENT]) {
+        bool has_content = false;
+
+        while(true) {
+            // Check for EOF
+            if(lexer->eof(lexer)) {
+                if(has_content) {
+                    lexer->result_symbol = EXEC_BLOCK_CONTENT;
+                    return true;
+                }
+                return false;
+            }
+
+            // Handle newline
+            if(lexer->lookahead == '\n') {
+                has_content = true;
+                lexer->advance(lexer, false);
+                lexer->mark_end(lexer);
+                continue;
+            }
+
+            // Skip columns beyond 72 (sequence number area at end)
+            if(lexer->get_column(lexer) >= 72) {
+                while(lexer->lookahead != '\n' && !lexer->eof(lexer)) {
+                    lexer->advance(lexer, false);
+                }
+                continue;
+            }
+
+            // Check for END-EXEC (case-insensitive)
+            // Mark position before potential END-EXEC
+            if(towlower(lexer->lookahead) == 'e') {
+                // Mark the end of content BEFORE the 'E'
+                lexer->mark_end(lexer);
+
+                // Check if this is END-EXEC
+                int matched = scan_for_end_exec(lexer);
+                if(matched == 8) {  // Full "END-EXEC" match
+                    // Found END-EXEC!
+                    // Return content captured up to (but not including) END-EXEC
+                    // The mark_end from scan_for_end_exec marked position before "END-EXEC"
+                    lexer->result_symbol = EXEC_BLOCK_CONTENT;
+                    return true;
+                }
+                // Not END-EXEC - the characters were consumed by scan_for_end_exec
+                // but that's okay, they're part of the content
+                has_content = true;
+                lexer->mark_end(lexer);  // Update mark to include consumed chars
+                continue;
+            }
+
+            // Regular content - consume and mark
+            has_content = true;
+            lexer->advance(lexer, false);
+            lexer->mark_end(lexer);
         }
     }
 

@@ -19,6 +19,7 @@ module.exports = grammar({
     $._LINE_COMMENT,
     $.comment_entry,
     $._multiline_string,
+    $.exec_block_content,  // Content between EXEC CICS/SQL and END-EXEC
   ],
 
   extras: $ => [
@@ -1363,6 +1364,22 @@ module.exports = grammar({
       '.'
     )),
 
+    // EXEC CICS statement - captures CICS commands as opaque block
+    exec_cics_statement: $ => seq(
+      $._EXEC,
+      $._CICS,
+      optional($.exec_block_content),
+      $._END_EXEC
+    ),
+
+    // EXEC SQL statement - captures SQL as opaque block
+    exec_sql_statement: $ => seq(
+      $._EXEC,
+      $._SQL,
+      optional($.exec_block_content),
+      $._END_EXEC
+    ),
+
     _statement: $ => choice(
       $.accept_statement,
       $.add_statement,
@@ -1376,6 +1393,8 @@ module.exports = grammar({
       $.delete_statement,
       $.display_statement,
       $.divide_statement,
+      $.exec_cics_statement,
+      $.exec_sql_statement,
       $.exit_statement,
       $.goback_statement,
       $.goto_statement,
@@ -3779,5 +3798,11 @@ module.exports = grammar({
     OR_GE: $ => /[oO][rR][ \t]+(>=|[nN][oO][tT][ \t]+(<|[lL][eE][sS][sS][ \t]+[tT][hH][aA][nN]))/,
     OR_EQ: $ => /[oO][rR][ \t]+(=|[eE][qQ][uU][aA][lL]([ \t]+[tT][oO])?)/,
     OR_NE: $ => /[oO][rR][ \t]+(!=|[nN][oO][tT][ \t]+[eE][qQ][uU][aA][lL]([ \t]+[tT][oO])?)/,
+
+    // EXEC CICS/SQL keywords - token() with prec() ensures these match before WORD
+    _EXEC: $ => token(prec(10, /[eE][xX][eE][cC]/)),
+    _CICS: $ => token(prec(10, /[cC][iI][cC][sS]/)),
+    _SQL: $ => token(prec(10, /[sS][qQ][lL]/)),
+    _END_EXEC: $ => token(prec(10, /[eE][nN][dD]-[eE][xX][eE][cC]/)),
   }
 });
