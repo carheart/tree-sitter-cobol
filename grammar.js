@@ -1380,6 +1380,14 @@ module.exports = grammar({
       $._END_EXEC
     ),
 
+    // EXEC DLI statement - captures IMS/DL/I commands as opaque block
+    exec_dli_statement: $ => seq(
+      $._EXEC,
+      $._DLI,
+      optional($.exec_block_content),
+      $._END_EXEC
+    ),
+
     _statement: $ => choice(
       $.accept_statement,
       $.add_statement,
@@ -1395,6 +1403,7 @@ module.exports = grammar({
       $.divide_statement,
       $.exec_cics_statement,
       $.exec_sql_statement,
+      $.exec_dli_statement,
       $.exit_statement,
       $.goback_statement,
       $.goto_statement,
@@ -3803,6 +3812,7 @@ module.exports = grammar({
     _EXEC: $ => token(prec(10, /[eE][xX][eE][cC]/)),
     _CICS: $ => token(prec(10, /[cC][iI][cC][sS]/)),
     _SQL: $ => token(prec(10, /[sS][qQ][lL]/)),
+    _DLI: $ => token(prec(10, /[dD][lL][iI]/)),
     _END_EXEC: $ => token(prec(10, /[eE][nN][dD]-[eE][xX][eE][cC]/)),
   }
 });

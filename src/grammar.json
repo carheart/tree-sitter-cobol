@@ -7079,6 +7079,35 @@
         }
       ]
     },
+    "exec_dli_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_EXEC"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_DLI"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "exec_block_content"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_END_EXEC"
+        }
+      ]
+    },
     "_statement": {
       "type": "CHOICE",
       "members": [
@@ -7137,6 +7166,10 @@
         {
           "type": "SYMBOL",
           "name": "exec_sql_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "exec_dli_statement"
         },
         {
           "type": "SYMBOL",
@@ -19289,6 +19322,17 @@
         "content": {
           "type": "PATTERN",
           "value": "[sS][qQ][lL]"
+        }
+      }
+    },
+    "_DLI": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 10,
+        "content": {
+          "type": "PATTERN",
+          "value": "[dD][lL][iI]"
         }
       }
     },

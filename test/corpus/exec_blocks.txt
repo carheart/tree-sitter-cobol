@@ -121,3 +121,93 @@ Multiple EXEC statements
           (exec_block_content))
         (exec_sql_statement
           (exec_block_content))))))
+
+==================
+EXEC DLI simple SCHD
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC DLI SCHD PSB(MYPSB) END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_dli_statement
+          (exec_block_content))))))
+
+==================
+EXEC DLI GU with segment
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC DLI GU
+               USING PCB(1)
+               SEGMENT(CUSTOMER)
+               INTO(WS-CUSTOMER-AREA)
+           END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_dli_statement
+          (exec_block_content))))))
+
+==================
+EXEC DLI ISRT insert
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC DLI ISRT
+               USING PCB(2)
+               SEGMENT(ORDER)
+               FROM(WS-ORDER-REC)
+           END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_dli_statement
+          (exec_block_content))))))
+
+==================
+Multiple EXEC with DLI
+==================
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TESTPROG.
+       PROCEDURE DIVISION.
+           EXEC DLI SCHD PSB(MYPSB) END-EXEC.
+           EXEC CICS RETURN END-EXEC.
+           EXEC SQL COMMIT END-EXEC.
+
+---
+
+(start
+  (program_definition
+    (identification_division)
+    (procedure_division
+      (procedure_division_content
+        (exec_dli_statement
+          (exec_block_content))
+        (exec_cics_statement
+          (exec_block_content))
+        (exec_sql_statement
+          (exec_block_content))))))

@@ -4506,6 +4506,21 @@
     }
   },
   {
+    "type": "exec_dli_statement",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "exec_block_content",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "exec_sql_statement",
     "named": true,
     "fields": {},
@@ -9345,6 +9360,10 @@
           "named": true
         },
         {
+          "type": "exec_dli_statement",
+          "named": true
+        },
+        {
           "type": "exec_sql_statement",
           "named": true
         },
@@ -9677,6 +9696,10 @@
         },
         {
           "type": "exec_cics_statement",
+          "named": true
+        },
+        {
+          "type": "exec_dli_statement",
           "named": true
         },
         {
