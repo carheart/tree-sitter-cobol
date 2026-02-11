@@ -1492,11 +1492,30 @@ module.exports = grammar({
       '.'
     ),
 
+    // COPY REPLACING clause - supports multiple replacement pairs and pseudo-text
+    // Example: COPY CUSTOMER REPLACING ==:tag:== BY ==LOADFile== ==:other:== BY ==Value==.
     replacing_clause: $ => seq(
+      $._REPLACING,
+      repeat1($.replacement_pair)
+    ),
+
+    // Single replacement pair in COPY REPLACING
+    replacement_pair: $ => seq(
       field('leading_or_trailing', optional(choice($.LEADING, $.TRAILING))),
-      field('x', choice($.WORD, $.string)),
+      field('x', choice($.WORD, $.string, $.pseudo_text)),
       optional($._BY),
-      field('by', choice($.WORD, $.string)),
+      field('by', choice($.WORD, $.string, $.pseudo_text)),
+    ),
+
+    // Pseudo-text delimited by == == for COPY REPLACING
+    // Example: ==:tag:== or ==WS-VARIABLE==
+    pseudo_text: $ => seq(
+      '==',
+      repeat(choice(
+        /[^=\n]+/,      // Any chars except = and newline
+        /=[^=]/         // Single = not followed by =
+      )),
+      '=='
     ),
 
     start_statement: $ => seq(

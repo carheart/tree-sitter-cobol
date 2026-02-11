@@ -7551,6 +7551,22 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "SYMBOL",
+          "name": "_REPLACING"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "replacement_pair"
+          }
+        }
+      ]
+    },
+    "replacement_pair": {
+      "type": "SEQ",
+      "members": [
+        {
           "type": "FIELD",
           "name": "leading_or_trailing",
           "content": {
@@ -7588,6 +7604,10 @@
               {
                 "type": "SYMBOL",
                 "name": "string"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pseudo_text"
               }
             ]
           }
@@ -7617,9 +7637,42 @@
               {
                 "type": "SYMBOL",
                 "name": "string"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pseudo_text"
               }
             ]
           }
+        }
+      ]
+    },
+    "pseudo_text": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "=="
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "PATTERN",
+                "value": "[^=\\n]+"
+              },
+              {
+                "type": "PATTERN",
+                "value": "=[^=]"
+              }
+            ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "=="
         }
       ]
     },

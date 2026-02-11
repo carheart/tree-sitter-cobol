@@ -10022,6 +10022,11 @@
     }
   },
   {
+    "type": "pseudo_text",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "qualified_word",
     "named": true,
     "fields": {},
@@ -10499,7 +10504,7 @@
     }
   },
   {
-    "type": "replacing_clause",
+    "type": "replacement_pair",
     "named": true,
     "fields": {
       "by": {
@@ -10508,6 +10513,10 @@
         "types": [
           {
             "type": "WORD",
+            "named": true
+          },
+          {
+            "type": "pseudo_text",
             "named": true
           },
           {
@@ -10539,11 +10548,30 @@
             "named": true
           },
           {
+            "type": "pseudo_text",
+            "named": true
+          },
+          {
             "type": "string",
             "named": true
           }
         ]
       }
+    }
+  },
+  {
+    "type": "replacing_clause",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "replacement_pair",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -14349,6 +14377,10 @@
   },
   {
     "type": "=",
+    "named": false
+  },
+  {
+    "type": "==",
     "named": false
   },
   {
