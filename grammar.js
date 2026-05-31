@@ -3334,7 +3334,12 @@ module.exports = grammar({
     _WHEN_COMPILED_FUNC: $ => /[wW][hH][eE][nN]-[cC][oO][mM][pP][iI][lL][eE][dD]-[fF][uU][nN][cC]/,
     _WHEN_OTHER: $ => /[wW][hH][eE][nN][ \t\n]+[oO][tT][hH][eE][rR]/,
     _WITH: $ => /[wW][iI][tT][hH]/,
-    _WORD: $ => /([0-9][a-zA-Z0-9-]*[a-zA-Z][a-zA-Z0-9-]*)|([a-zA-Z][a-zA-Z0-9-]*)/,
+    // underscore_pgmid (live finding C3): admit '_' into the COBOL user-word
+    // continuation class so PROGRAM-ID/data names with underscores (e.g. BATCH_DYN)
+    // parse via the _WORD branch and mint kind=program symbols. Additive superset:
+    // '_' was previously a hard token boundary. The mandatory-letter anchor
+    // [a-zA-Z] is intentionally NOT widened (a word must still contain a letter).
+    _WORD: $ => /([0-9][a-zA-Z0-9_-]*[a-zA-Z][a-zA-Z0-9_-]*)|([a-zA-Z][a-zA-Z0-9_-]*)/,
     _WORDS: $ => /[wW][oO][rR][dD][sS]/,
     _WORKING_STORAGE: $ => /[wW][oO][rR][kK][iI][nN][gG]-[sS][tT][oO][rR][aA][gG][eE]/,
     _YYYYDDD: $ => /[yY][yY][yY][yY][dD][dD][dD]/,
