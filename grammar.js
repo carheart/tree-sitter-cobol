@@ -1401,6 +1401,7 @@ module.exports = grammar({
       $.delete_statement,
       $.display_statement,
       $.divide_statement,
+      $.entry_statement,
       $.exec_cics_statement,
       $.exec_sql_statement,
       $.exec_dli_statement,
@@ -1720,6 +1721,17 @@ module.exports = grammar({
         field('returning', seq($._RETURNING, $._identifier),
           field('giving', seq($._GIVING, $._identifier)),
         )))
+    ),
+
+    // ENTRY 'literal' [USING param...] — declares a secondary program entry point
+    // (e.g. IMS DLITCBL). Modeled on _call_header; ENTRY has no RETURNING/GIVING.
+    entry_statement: $ => seq(
+      $._ENTRY,
+      field('x', $._id_or_lit_or_func),
+      field('using', optional(seq(
+        $._USING,
+        repeat1($._call_param)
+      )))
     ),
 
     _call_param: $ => choice(

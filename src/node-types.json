@@ -4409,6 +4409,68 @@
     "fields": {}
   },
   {
+    "type": "entry_statement",
+    "named": true,
+    "fields": {
+      "using": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "call_param_arg",
+            "named": true
+          },
+          {
+            "type": "call_param_omitted",
+            "named": true
+          }
+        ]
+      },
+      "x": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "function_",
+            "named": true
+          },
+          {
+            "type": "h_string",
+            "named": true
+          },
+          {
+            "type": "n_string",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "qualified_word",
+            "named": true
+          },
+          {
+            "type": "refmod",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "subref",
+            "named": true
+          },
+          {
+            "type": "x_string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "environment_division",
     "named": true,
     "fields": {},
@@ -9348,6 +9410,10 @@
           "named": true
         },
         {
+          "type": "entry_statement",
+          "named": true
+        },
+        {
           "type": "eop",
           "named": true
         },
@@ -9684,6 +9750,10 @@
         },
         {
           "type": "else_if_header",
+          "named": true
+        },
+        {
+          "type": "entry_statement",
           "named": true
         },
         {
