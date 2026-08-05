@@ -401,9 +401,10 @@ module.exports = grammar({
       $._FUNCTION,
       choice(
         repeat1($.LITERAL),
+        repeat1($.WORD),
         $.ALL
       ),
-      $._INTRINSIC
+      optional($._INTRINSIC)
     ),
 
     input_output_section: $ => choice(
@@ -1126,6 +1127,9 @@ module.exports = grammar({
       seq($.BINARY_DOUBLE, $.SIGNED),
       seq($.BINARY_DOUBLE, $.UNSIGNED),
       $.BINARY_DOUBLE,
+      seq($.BINARY_INT, $.SIGNED),
+      seq($.BINARY_INT, $.UNSIGNED),
+      $.BINARY_INT,
       seq($.BINARY_C_LONG, $.SIGNED),
       seq($.BINARY_C_LONG, $.UNSIGNED),
       $.BINARY_C_LONG,
@@ -2926,6 +2930,7 @@ module.exports = grammar({
     _BINARY_C_LONG: $ => /[bB][iI][nN][aA][rR][yY]-[cC]-[lL][oO][nN][gG]/,
     _BINARY_CHAR: $ => /[bB][iI][nN][aA][rR][yY]-[cC][hH][aA][rR]/,
     _BINARY_DOUBLE: $ => /[bB][iI][nN][aA][rR][yY]-[dD][oO][uU][bB][lL][eE]/,
+    _BINARY_INT: $ => /[bB][iI][nN][aA][rR][yY]-[iI][nN][tT]/,
     _BINARY_LONG: $ => /[bB][iI][nN][aA][rR][yY]-[lL][oO][nN][gG]/,
     _BINARY_SHORT: $ => /[bB][iI][nN][aA][rR][yY]-[sS][hH][oO][rR][tT]/,
     _BLANK: $ => /[bB][lL][aA][nN][kK]/,
@@ -3398,6 +3403,7 @@ module.exports = grammar({
     BINARY_C_LONG: $ => $._BINARY_C_LONG,
     BINARY_CHAR: $ => $._BINARY_CHAR,
     BINARY_DOUBLE: $ => $._BINARY_DOUBLE,
+    BINARY_INT: $ => $._BINARY_INT,
     BINARY_LONG: $ => $._BINARY_LONG,
     BINARY_SHORT: $ => $._BINARY_SHORT,
     //BLANK: $ => $._BLANK,

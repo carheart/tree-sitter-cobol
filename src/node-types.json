@@ -115,6 +115,11 @@
     "fields": {}
   },
   {
+    "type": "BINARY_INT",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "BINARY_LONG",
     "named": true,
     "fields": {}
@@ -10941,6 +10946,10 @@
         {
           "type": "LITERAL",
           "named": true
+        },
+        {
+          "type": "WORD",
+          "named": true
         }
       ]
     }
@@ -13612,6 +13621,10 @@
         },
         {
           "type": "BINARY_DOUBLE",
+          "named": true
+        },
+        {
+          "type": "BINARY_INT",
           "named": true
         },
         {

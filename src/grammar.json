@@ -1714,14 +1714,29 @@
               }
             },
             {
+              "type": "REPEAT1",
+              "content": {
+                "type": "SYMBOL",
+                "name": "WORD"
+              }
+            },
+            {
               "type": "SYMBOL",
               "name": "ALL"
             }
           ]
         },
         {
-          "type": "SYMBOL",
-          "name": "_INTRINSIC"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_INTRINSIC"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
@@ -5665,6 +5680,36 @@
         {
           "type": "SYMBOL",
           "name": "BINARY_DOUBLE"
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "BINARY_INT"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "SIGNED"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "BINARY_INT"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "UNSIGNED"
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "BINARY_INT"
         },
         {
           "type": "SEQ",
@@ -16495,6 +16540,10 @@
       "type": "PATTERN",
       "value": "[bB][iI][nN][aA][rR][yY]-[dD][oO][uU][bB][lL][eE]"
     },
+    "_BINARY_INT": {
+      "type": "PATTERN",
+      "value": "[bB][iI][nN][aA][rR][yY]-[iI][nN][tT]"
+    },
     "_BINARY_LONG": {
       "type": "PATTERN",
       "value": "[bB][iI][nN][aA][rR][yY]-[lL][oO][nN][gG]"
@@ -18477,6 +18526,10 @@
     "BINARY_DOUBLE": {
       "type": "SYMBOL",
       "name": "_BINARY_DOUBLE"
+    },
+    "BINARY_INT": {
+      "type": "SYMBOL",
+      "name": "_BINARY_INT"
     },
     "BINARY_LONG": {
       "type": "SYMBOL",
