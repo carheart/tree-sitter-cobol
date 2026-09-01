@@ -14308,6 +14308,14 @@
         {
           "type": "data_description",
           "named": true
+        },
+        {
+          "type": "exec_cics_statement",
+          "named": true
+        },
+        {
+          "type": "exec_sql_statement",
+          "named": true
         }
       ]
     }

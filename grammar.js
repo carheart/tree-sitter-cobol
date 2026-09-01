@@ -661,6 +661,10 @@ module.exports = grammar({
       choice(
         $.INDEXED,
         seq($.RECORD, optional($._BINARY), $.SEQUENTIAL),
+        // LINE SEQUENTIAL: the GnuCOBOL/MF line-delimited organization. Absent
+        // from the original choice(), so `ORGANIZATION IS LINE SEQUENTIAL`
+        // produced an ERROR node that swallowed the whole compilation unit.
+        seq($._LINE, $.SEQUENTIAL),
         $.SEQUENTIAL,
         $.RELATIVE,
       )
@@ -900,7 +904,15 @@ module.exports = grammar({
 
     working_storage_section: $ => seq(
       $._WORKING_STORAGE, $._SECTION, '.',
-      repeat(seq($.data_description, repeat1('.')))
+      // EXEC SQL INCLUDE SQLCA / EXEC SQL DECLARE ... TABLE legally appear in
+      // WORKING-STORAGE. The exec_*_statement rules previously were reachable
+      // only via _statement (PROCEDURE DIVISION), so a DCLGEN-style program
+      // errored at its first EXEC and lost the rest of the file.
+      repeat(choice(
+        seq($.data_description, repeat1('.')),
+        seq($.exec_sql_statement, optional('.')),
+        seq($.exec_cics_statement, optional('.'))
+      ))
     ),
 
     data_description: $ => choice(
@@ -3856,7 +3868,12 @@ module.exports = grammar({
 
     COMPUTATIONAL: $ => $._COMPUTATIONAL,
     _COMPUTATIONAL: $ => /[cC][oO][mM][pP][uU][tT][aA][tT][iI][oO][nN][aA][lL]/,
-    _NOT_EQUAL: $ => /(!=)|([nN][oO][tT][ \t]+(([eE][qQ][uU][aA][lL])|=))/,
+    // `NOT=` (no space) is accepted by every mainstream COBOL compiler. The
+    // original pattern required [ \t]+ before BOTH alternatives, so `NOT EQUAL`
+    // parsed but `NOT=` did not. The whitespace stays mandatory before the
+    // EQUAL keyword (otherwise `NOTEQUAL` would lex as an operator) and is
+    // optional only before the `=` sign.
+    _NOT_EQUAL: $ => /(!=)|([nN][oO][tT][ \t]+[eE][qQ][uU][aA][lL])|([nN][oO][tT][ \t]*=)/,
     _NOT_LESS: $ => /([nN][oO][tT][ \t]+(<|[lL][eE][sS][sS]))/,
     _NOT_GREATER: $ => /([nN][oO][tT][ \t]+(>|[gG][rR][eE][aA][tT][eE][rR]))/,
 
