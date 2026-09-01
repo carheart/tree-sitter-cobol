@@ -36,7 +36,7 @@ module.exports = grammar({
     start: $ => repeat(
       choice(
         $.program_definition,
-        //optional($.function_definition) //todo
+        $.function_definition
       )
     ),
 
@@ -116,27 +116,50 @@ module.exports = grammar({
       field('comment', repeat1($.comment_entry)),
     ),
 
-    function_definition: $ => seq(
+    // COBOL-2002 user-defined function (FUNCTION-ID compilation unit).
+    // Mirrors program_definition's shape deliberately: both alternatives of `start`
+    // share the IDENTIFICATION DIVISION. prefix and diverge only at the second
+    // statement (PROGRAM-ID. vs FUNCTION-ID.), so keeping them structurally
+    // symmetric is what keeps the LR surface minimal. Every division is optional
+    // because corpus forms omit several of them (banking.cbl omits none;
+    // test9033.cbl omits environment_division), and only identification_division +
+    // FUNCTION-ID. are structurally required.
+    function_definition: $ => prec.right(seq(
       $.function_division,
-      $.environment_division,
-      $.data_division,
-      $.procedure_division,
-      $.end_function
-    ),
+      optional($.environment_division),
+      optional($.data_division),
+      optional($.procedure_division),
+      optional($.end_function)
+    )),
 
+    // FUNCTION-ID. name [AS 'literal'] [IS PROTOTYPE].
+    // as_literal is optional: `function-id. iban-checksum.` (banking.cbl:10) and
+    // `Function-ID. doesnada.` (test9033.cbl:2) both omit AS. is_prototype is
+    // accepted so a COBOL-2002 prototype declaration parses without an ERROR span
+    // perturbing the surrounding file; it mints no distinct symbol (v1 scope).
     function_division: $ => seq(
       $._FUNCTION_ID,
       '.',
       $.program_name,
-      $.as_literal,
+      optional($.as_literal),
+      optional($.is_prototype),
       '.'
     ),
 
-    end_function: $ => seq(
-      $._END_FUNCTION,
-      $.program_name,
-      '.'
+    is_prototype: $ => seq(
+      $._IS,
+      $._PROTOTYPE
     ),
+
+    // END FUNCTION [name]. — prec(1) mirrors end_program exactly. The terminator
+    // name is optional (bare `END FUNCTION.`) and is deliberately NOT constrained to
+    // match the header name: test9033.cbl:2/:10 declares `doesnada` and terminates
+    // with `End Function test9033.` (FR-04/FR-39).
+    end_function: $ => prec(1, seq(
+      $._END_FUNCTION,
+      optional($.program_name),
+      '.'
+    )),
 
     environment_division: $ => seq(
       $._ENVIRONMENT,
@@ -3026,7 +3049,15 @@ module.exports = grammar({
     _END_DISPLAY: $ => /[eE][nN][dD]-[dD][iI][sS][pP][lL][aA][yY]/,
     _END_DIVIDE: $ => /[eE][nN][dD]-[dD][iI][vV][iI][dD][eE]/,
     _END_EVALUATE: $ => /[eE][nN][dD]-[eE][vV][aA][lL][uU][aA][tT][eE]/,
-    _END_FUNCTION: $ => /[eE][nN][dD]-[fF][uU][nN][cC][tT][iI][oO][nN]/,
+    // Accepts BOTH the space-separated `END FUNCTION` and the hyphenated
+    // `END-FUNCTION`. The corpus uses the SPACE form exclusively
+    // (banking.cbl:122 `end function iban-checksum.`, test9033.cbl:10
+    // `End Function test9033.`), and the standard terminator is two words —
+    // this token previously matched only the hyphen form, so a real
+    // `END FUNCTION` fell through to at_end (`optional($._AT), $._END`) and was
+    // swallowed as the preceding statement's AT END clause. Mirrors _END_PROGRAM,
+    // which has always used the `[ \t]+` separator.
+    _END_FUNCTION: $ => /[eE][nN][dD][ \t-]+[fF][uU][nN][cC][tT][iI][oO][nN]/,
     _END_IF: $ => /[eE][nN][dD]-[iI][fF]/,
     _END_MULTIPLY: $ => /[eE][nN][dD]-[mM][uU][lL][tT][iI][pP][lL][yY]/,
     _END_OF_PAGE: $ => /[eE][nN][dD]-[oO][fF]-[pP][aA][gG][eE]/,
@@ -3315,6 +3346,7 @@ module.exports = grammar({
     _FALSE: $ => /[fF][aA][lL][sS][eE]/,
     _FILE: $ => /[fF][iI][lL][eE]/,
     _INITIAL: $ => /[iI][nN][iI][tT][iI][aA][lL]/,
+    _PROTOTYPE: $ => /[pP][rR][oO][tT][oO][tT][yY][pP][eE]/,
     _TOK_NULL: $ => choice('null', 'Null', 'NULL'),
     _TRUE: $ => /[tT][rR][uU][eE]/,
     _TOP: $ => /[tT][oO][pP]/,

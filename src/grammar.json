@@ -11,6 +11,10 @@
           {
             "type": "SYMBOL",
             "name": "program_definition"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "function_definition"
           }
         ]
       }
@@ -356,29 +360,65 @@
       ]
     },
     "function_definition": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "function_division"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "environment_division"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "data_division"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "procedure_division"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "end_function"
-        }
-      ]
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "function_division"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "environment_division"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "data_division"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "procedure_division"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "end_function"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
     },
     "function_division": {
       "type": "SEQ",
@@ -396,8 +436,28 @@
           "name": "program_name"
         },
         {
-          "type": "SYMBOL",
-          "name": "as_literal"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "as_literal"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "is_prototype"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "STRING",
@@ -405,22 +465,47 @@
         }
       ]
     },
-    "end_function": {
+    "is_prototype": {
       "type": "SEQ",
       "members": [
         {
           "type": "SYMBOL",
-          "name": "_END_FUNCTION"
+          "name": "_IS"
         },
         {
           "type": "SYMBOL",
-          "name": "program_name"
-        },
-        {
-          "type": "STRING",
-          "value": "."
+          "name": "_PROTOTYPE"
         }
       ]
+    },
+    "end_function": {
+      "type": "PREC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_END_FUNCTION"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "program_name"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "STRING",
+            "value": "."
+          }
+        ]
+      }
     },
     "environment_division": {
       "type": "SEQ",
@@ -16926,7 +17011,7 @@
     },
     "_END_FUNCTION": {
       "type": "PATTERN",
-      "value": "[eE][nN][dD]-[fF][uU][nN][cC][tT][iI][oO][nN]"
+      "value": "[eE][nN][dD][ \\t-]+[fF][uU][nN][cC][tT][iI][oO][nN]"
     },
     "_END_IF": {
       "type": "PATTERN",
@@ -18211,6 +18296,10 @@
     "_INITIAL": {
       "type": "PATTERN",
       "value": "[iI][nN][iI][tT][iI][aA][lL]"
+    },
+    "_PROTOTYPE": {
+      "type": "PATTERN",
+      "value": "[pP][rR][oO][tT][oO][tT][yY][pP][eE]"
     },
     "_TOK_NULL": {
       "type": "CHOICE",
