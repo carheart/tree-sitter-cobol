@@ -9,6 +9,10 @@ enum TokenType {
     COMMENT_ENTRY,
     multiline_string,
     EXEC_BLOCK_CONTENT,  // Captures content between EXEC CICS/SQL and END-EXEC
+    /* R2' (Tier 1c): a sentence period occupying the LAST code column (column 72,
+     * 0-based index 71). MUST stay last — this enum's order is the contract with
+     * grammar.js's externals list. */
+    MARGIN_PERIOD,
 };
 
 void *tree_sitter_COBOL_external_scanner_create() {
@@ -133,6 +137,40 @@ bool tree_sitter_COBOL_external_scanner_scan(void *payload, TSLexer *lexer,
         return false;
     }
 
+    /* R2' (Tier 1c): a sentence period occupying the LAST code column.
+     *
+     * THE DEFECT. Fixed-format COBOL reserves columns 73-80 for a sequence number.
+     * When a sentence's terminating period lands exactly on column 72 and digits
+     * follow it immediately, the internal lexer merges them into ONE token: the
+     * `decimal` rule is /[+-]?[0-9]*\.[0-9]+/, whose leading [0-9]* is optional, so
+     * `.` + `01259507` lexes as the single decimal `.01259507`. The sentence loses
+     * its terminator and the surrounding entry runs on into an ERROR span —
+     * COACCT01.cbl lost ~20 field symbols this way, COTRTUPC.cbl similarly.
+     *
+     * WHY THE SCANNER AND NOT grammar.js. The condition is COLUMN GEOMETRY, which a
+     * regex token cannot see. Emitting the period as a one-character external token
+     * before the internal lexer can start a `decimal` is the only way to break the
+     * merge.
+     *
+     * WHY THE GUARD IS `== 71` EXACTLY, and not "digits follow" or "column >= 71".
+     * NIST identification fields legitimately contain dots (`IC1124.2`), and a
+     * looser condition regressed 5 files of the grammar's own suite in an advisor
+     * pass. Column 71 (0-based) IS column 72 (1-based) — the last code column — so
+     * this fires only where the merge is actually possible.
+     *
+     * KNOWN, DISCLOSED RESIDUAL: a NUMERIC literal flush at the margin
+     * (`VALUE 42.` + sequence digits) still merges, because the run starts at the
+     * digit `4`, before this check can intercept the period. Zero observed
+     * instances across the 312 production programs; deliberately out of scope
+     * rather than silently handled. */
+    if(valid_symbols[MARGIN_PERIOD] && lexer->lookahead == '.'
+       && lexer->get_column(lexer) == 71) {
+        lexer->advance(lexer, false);
+        lexer->result_symbol = MARGIN_PERIOD;
+        lexer->mark_end(lexer);
+        return true;
+    }
+
     if(valid_symbols[WHITE_SPACES]) {
         if(is_white_space(lexer->lookahead)) {
             while(is_white_space(lexer->lookahead)) {
@@ -211,19 +249,44 @@ bool tree_sitter_COBOL_external_scanner_scan(void *payload, TSLexer *lexer,
     }
 
     if(valid_symbols[multiline_string]) {
+        /* R4 (Tier 1c): CONTINUED LITERALS, both quote styles.
+         *
+         * A literal longer than the code area is continued by putting '-' in column 7
+         * of the next line — the ONLY legal way to write a >60-char literal in fixed
+         * format. This handler already implemented that, but was hard-coded to the
+         * double quote in four places, so single-quoted continued literals fell
+         * through to the internal `string` rule (/('[^'\n]*')+/), which cannot span a
+         * newline. CBSTM03A.CBL lost 62 symbols to exactly this.
+         *
+         * The quote character is captured once, from the opening delimiter, and used
+         * throughout — a literal opened with ' must not be closable by ".
+         *
+         * DOUBLED-QUOTE ESCAPE: inside a COBOL literal the delimiter is escaped by
+         * doubling it (`'DON''T'`). Without this check the naive extension would end
+         * the literal at the first inner quote and regress source that parses today,
+         * so the two changes have to land together. */
         while(true) {
-            if(lexer->lookahead != '"') {
+            if(lexer->lookahead != '"' && lexer->lookahead != '\'') {
                 return false;
             }
+            int quote = lexer->lookahead;
             lexer->advance(lexer, false);
-            while(lexer->lookahead != '"' && lexer->lookahead != 0 && lexer->get_column(lexer) < 72) {
+            for(;;) {
+                while(lexer->lookahead != quote && lexer->lookahead != 0
+                      && lexer->get_column(lexer) < 72) {
+                    lexer->advance(lexer, false);
+                }
+                if(lexer->lookahead != quote) {
+                    break; /* hit EOL/EOF: fall through to the continuation handling */
+                }
+                /* Closing delimiter, or an escaped (doubled) one? */
                 lexer->advance(lexer, false);
-            }
-            if(lexer->lookahead == '"') {
-                lexer->result_symbol = multiline_string;
-                lexer->advance(lexer, false);
-                lexer->mark_end(lexer);
-                return true;
+                if(lexer->lookahead != quote) {
+                    lexer->result_symbol = multiline_string;
+                    lexer->mark_end(lexer);
+                    return true;
+                }
+                lexer->advance(lexer, false); /* consume the second of the pair */
             }
             while(lexer->lookahead != 0 && lexer->lookahead != '\n') {
                 lexer->advance(lexer, true);

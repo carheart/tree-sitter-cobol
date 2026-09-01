@@ -20,6 +20,9 @@ module.exports = grammar({
     $.comment_entry,
     $._multiline_string,
     $.exec_block_content,  // Content between EXEC CICS/SQL and END-EXEC
+    // R2': a sentence period sitting in the LAST code column (72). Appended LAST
+    // because the externals list order must match the scanner's TokenType enum.
+    $._MARGIN_PERIOD,
   ],
 
   extras: $ => [
@@ -952,7 +955,8 @@ module.exports = grammar({
     // statement rule are both present.
     record_description_list: $ => seq(
       repeat1(choice(
-        seq($.data_description, repeat1('.')),
+        // R2': `.` OR the scanner's margin-period. See the _MARGIN_PERIOD external.
+        seq($.data_description, repeat1(choice('.', $._MARGIN_PERIOD))),
         seq($.exec_sql_statement, optional('.')),
         seq($.exec_cics_statement, optional('.'))
       ))
@@ -965,7 +969,8 @@ module.exports = grammar({
       // only via _statement (PROCEDURE DIVISION), so a DCLGEN-style program
       // errored at its first EXEC and lost the rest of the file.
       repeat(choice(
-        seq($.data_description, repeat1('.')),
+        // R2': `.` OR the scanner's margin-period. See the _MARGIN_PERIOD external.
+        seq($.data_description, repeat1(choice('.', $._MARGIN_PERIOD))),
         seq($.exec_sql_statement, optional('.')),
         seq($.exec_cics_statement, optional('.'))
       ))
@@ -1384,10 +1389,32 @@ module.exports = grammar({
       $.paragraph_header,
     )),
 
-    _procedure_division_statements_before_header: $ => prec(1, seq(
-      repeat($._procedure_division_statement),
-      $._end_statement
-    )),
+    // R3d (Tier 1c): a paragraph whose last sentence is an EXEC block with NO period,
+    // followed by a `COPY 'MEMBER'.` that supplies the period itself.
+    //
+    // This is legal: the copybook member carries its own sentence periods. But
+    // copy_statement is an `extras` member whose grammar REQUIRES its trailing '.',
+    // so the COPY consumes the sentence terminator the EXEC needed. The only
+    // remaining LR parse then closes procedure_division (and program_definition) at
+    // the END-EXEC, the COPY binds at top level, and the following paragraph header
+    // has no home — after which comment_entry's zero-width recovery eats every
+    // remaining line. COTRTLIC.cbl lost 4 paragraphs to this.
+    //
+    // The second arm lets an EXEC statement itself terminate the run. prec(2) is
+    // REQUIRED, not cosmetic: without it the generator reports an unresolved conflict
+    // against `END DECLARATIVES`. The terminator set is restricted to EXEC statements
+    // deliberately — an earlier variant that added copy_statement to _end_statement
+    // fixed the target file but broke a previously-clean control.
+    _procedure_division_statements_before_header: $ => choice(
+      prec(1, seq(
+        repeat($._procedure_division_statement),
+        $._end_statement
+      )),
+      prec(2, seq(
+        repeat($._procedure_division_statement),
+        choice($.exec_sql_statement, $.exec_cics_statement, $.exec_dli_statement)
+      ))
+    ),
 
     _procedure_division_contenet: $ => prec.right(choice(
       seq(
@@ -2907,7 +2934,23 @@ module.exports = grammar({
       seq($.TRIM_FUNCTION, '(', $._trim_args, ')', optional($.func_refmod)),
       seq($.NUMVALC_FUNC, '(', $._numvalc_args, ')'),
       seq($.LOCALE_DT_FUNC, '(', $._locale_dt_args, ')', optional($.func_refmod)),
-      seq($.WORD, optional($.func_args)),
+      // R1: reference modification on an intrinsic — `FUNCTION CURRENT-DATE(1:4)`.
+      //
+      // The cause is NOT what it looks like. Every named-intrinsic arm above already
+      // carries optional($.func_refmod), so the obvious reading is that CURRENT-DATE
+      // takes one of those arms and something else is wrong. It does not: the token
+      // regexes are transliterated cobc token NAMES and match the literal text
+      // `current-date-func` (grammar.js:3090), not `CURRENT-DATE`. Real source
+      // therefore lexes as a plain WORD and lands on THIS arm — the only one without
+      // func_refmod — so `(1:4)` died at the colon and took the rest of the file
+      // with it (CBIMPORT.cbl: one line at 178 produced an ERROR span reported as
+      // starting at line 1).
+      //
+      // Fixing the -FUNC regexes instead would be WRONG: `CURRENT-DATE` is a legal
+      // user data-name in COBOL-85, so binding it to an intrinsic arm would break
+      // programs that declare a field by that name. Widening the WORD arm is the
+      // safe route and covers every user-defined and unlisted intrinsic at once.
+      seq($.WORD, optional($.func_args), optional($.func_refmod)),
     ))),
 
     func_refmod: $ => choice(

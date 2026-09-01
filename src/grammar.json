@@ -4586,8 +4586,17 @@
                   {
                     "type": "REPEAT1",
                     "content": {
-                      "type": "STRING",
-                      "value": "."
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": "."
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "_MARGIN_PERIOD"
+                        }
+                      ]
                     }
                   }
                 ]
@@ -4669,8 +4678,17 @@
                   {
                     "type": "REPEAT1",
                     "content": {
-                      "type": "STRING",
-                      "value": "."
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": "."
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "_MARGIN_PERIOD"
+                        }
+                      ]
                     }
                   }
                 ]
@@ -7008,24 +7026,62 @@
       }
     },
     "_procedure_division_statements_before_header": {
-      "type": "PREC",
-      "value": 1,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "REPEAT",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_procedure_division_statement"
-            }
-          },
-          {
-            "type": "SYMBOL",
-            "name": "_end_statement"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "PREC",
+          "value": 1,
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_procedure_division_statement"
+                }
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_end_statement"
+              }
+            ]
           }
-        ]
-      }
+        },
+        {
+          "type": "PREC",
+          "value": 2,
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_procedure_division_statement"
+                }
+              },
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "exec_sql_statement"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "exec_cics_statement"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "exec_dli_statement"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     "_procedure_division_contenet": {
       "type": "PREC_RIGHT",
@@ -16345,6 +16401,18 @@
                         "type": "BLANK"
                       }
                     ]
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "func_refmod"
+                      },
+                      {
+                        "type": "BLANK"
+                      }
+                    ]
                   }
                 ]
               }
@@ -19843,6 +19911,10 @@
     {
       "type": "SYMBOL",
       "name": "exec_block_content"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_MARGIN_PERIOD"
     }
   ],
   "inline": [],
