@@ -35,9 +35,23 @@ module.exports = grammar({
   rules: {
     start: $ => repeat(
       choice(
+        $.compiler_option_statement,
         $.program_definition,
         $.function_definition
       )
+    ),
+
+    // N1: IBM Enterprise COBOL `PROCESS` / `CBL` compiler-option statement. It precedes
+    // the compilation unit and carries compiler directives (`PROCESS SQL`, `CBL APOST`).
+    // The grammar had no rule for it at all, so the very first line of the file errored
+    // and the ERROR node was reported as starting at line 1 — the whole unit invisible.
+    //
+    // The option list is consumed as an opaque run to end-of-line rather than modelled:
+    // its contents are compiler settings, not symbols, and enumerating IBM's option
+    // vocabulary would be a maintenance burden with no extraction value.
+    compiler_option_statement: $ => seq(
+      choice($._PROCESS, $._CBL),
+      /[^\n]*/
     ),
 
     _LINE_COMMENT_ALIAS: $ => alias($._LINE_COMMENT, $.comment),
@@ -54,7 +68,20 @@ module.exports = grammar({
     )),
 
     identification_division: $ => seq(
-      $._IDENTIFICATION, $._DIVISION, '.',
+      // N3/N2: the division header is optional (COBOL-2002 / IBM / GnuCOBOL accept a
+      // bare PROGRAM-ID.) and `ID` is the standard COBOL-85 abbreviation for
+      // IDENTIFICATION. Previously both were mandatory-and-spelled-out, so either
+      // shape produced a whole-file ERROR node.
+      // N2: `ID` is the standard COBOL-85 abbreviation for IDENTIFICATION.
+      //
+      // N3 (header entirely absent, i.e. a file starting at `PROGRAM-ID.`) is
+      // DELIBERATELY NOT SUPPORTED. Making the header optional lets a bare
+      // program_id_paragraph start a compilation unit, which is genuinely ambiguous
+      // with the following division and produces an unresolved LR conflict
+      // (`'_IDENTIFICATION' '_DIVISION' '.' • '_PROGRAM_ID'` — three readings).
+      // Resolving it would need a precedence declaration on a construct that has
+      // ZERO instances in the measured corpus, so the ambiguity is not worth buying.
+      seq(choice($._IDENTIFICATION, $._ID), $._DIVISION, '.'),
       optional(
         seq($._PROGRAM_ID, '.',
           $.program_name,
@@ -62,7 +89,17 @@ module.exports = grammar({
             $.as_literal,
             $.is_initial,
             $.is_common)),
-          '.')),
+          // N8: the TERMINATING period after the program name is routinely absent in
+          // real source and accepted by every mainstream compiler. Requiring it made
+          // recovery catastrophic (whole-file ERROR) rather than local.
+          //
+          // Kept INLINE rather than extracted into its own rule: the extraction is
+          // tidier grammar but inserts a node between identification_division and
+          // program_name, which breaks queries/cobol/definitions.scm's
+          // `(identification_division (program_name))` pattern and every consumer of
+          // the program symbol. The AST shape is a published contract for the .scm
+          // layer, not a free internal choice.
+          optional('.'))),
       repeat(choice(
         $.author_section,
         $.installation_section,
@@ -93,27 +130,27 @@ module.exports = grammar({
 
     author_section: $ => seq(
       $._AUTHOR, '.',
-      field('comment', repeat1($.comment_entry)),
+      field('comment', repeat($.comment_entry)),
     ),
 
     installation_section: $ => seq(
       $._INSTALLATION, '.',
-      field('comment', repeat1($.comment_entry)),
+      field('comment', repeat($.comment_entry)),
     ),
 
     date_written_section: $ => seq(
       $._DATE_WRITTEN, '.',
-      field('comment', repeat1($.comment_entry)),
+      field('comment', repeat($.comment_entry)),
     ),
 
     date_compiled_section: $ => seq(
       $._DATE_COMPILED, '.',
-      field('comment', repeat1($.comment_entry)),
+      field('comment', repeat($.comment_entry)),
     ),
 
     security_section: $ => seq(
       $._SECURITY, '.',
-      field('comment', repeat1($.comment_entry)),
+      field('comment', repeat($.comment_entry)),
     ),
 
     // COBOL-2002 user-defined function (FUNCTION-ID compilation unit).
@@ -763,7 +800,7 @@ module.exports = grammar({
     file_description: $ => seq(
       $.file_type,
       $.file_description_entry,
-      $.record_description_list
+      optional($.record_description_list)
     ),
 
     file_type: $ => choice(
@@ -898,8 +935,27 @@ module.exports = grammar({
       seq($._REPORTS, optional($._ARE), field('name', $.WORD)),
     ),
 
+    // EXEC SQL / EXEC CICS may stand WHERE A RECORD ENTRY STANDS, in any section that
+    // owns a record_description_list (LINKAGE, LOCAL-STORAGE, and the FILE SECTION's FD
+    // record area) — not only in WORKING-STORAGE, which the first pass fixed at the
+    // section rule.
+    //
+    // The distinction that made this its own defect: `01 DFHCOMMAREA.` CLOSES its
+    // data_description at the period, so a following `EXEC SQL INCLUDE ... END-EXEC` is a
+    // SIBLING in the record list, not a child of the 01 — the source indentation is
+    // misleading. Fixing it at the section rule (as WORKING-STORAGE was) therefore does
+    // NOT cover it; the arm has to be in the list itself. Widening here also covers every
+    // future section that owns a record list, rather than needing one edit per section.
+    //
+    // Verified by an advisor pass over the 724-file corpus: 0 regressions, and the 7
+    // cics-genapp DB2 programs reach a fully clean parse once this and the PROCESS
+    // statement rule are both present.
     record_description_list: $ => seq(
-      repeat1(seq($.data_description, repeat1('.')))
+      repeat1(choice(
+        seq($.data_description, repeat1('.')),
+        seq($.exec_sql_statement, optional('.')),
+        seq($.exec_cics_statement, optional('.'))
+      ))
     ),
 
     working_storage_section: $ => seq(
@@ -1262,12 +1318,12 @@ module.exports = grammar({
       $._LOCAL_STORAGE,
       $._SECTION,
       '.',
-      $.record_description_list
+      optional($.record_description_list)
     ),
 
     linkage_section: $ => seq(
       $._LINKAGE, $._SECTION, '.',
-      $.record_description_list
+      optional($.record_description_list)
     ),
 
     report_section: $ => /report_section/,
@@ -2890,7 +2946,10 @@ module.exports = grammar({
     //todo
     number: $ => choice($.integer, $.decimal),
     integer: $ => /[+-]?[0-9,]+/,
-    decimal: $ => /[+-]?[0-9]*\.[0-9]+/,
+    // N7: the optional exponent part is a COBOL-85 floating-point literal
+    // (e.g. `6.67428E-11`, `06.23E-24`). Without it the mantissa lexed as a
+    // decimal and the bare `E-11` tail derailed the surrounding statement.
+    decimal: $ => /[+-]?[0-9]*\.[0-9]+([eE][+-]?[0-9]+)?/,
     _string: $ => choice(
       $.string,
       $.x_string,
@@ -2904,25 +2963,29 @@ module.exports = grammar({
       $._multiline_string,
     ),
 
+    // N6: COBOL is case-insensitive, and every OTHER token rule in this grammar uses
+    // [xX]-style classes. These three were the only case-SENSITIVE rules in the file,
+    // so `X'40'` parsed and the equally legal `x'40'` produced an ERROR span that
+    // swallowed the rest of the compilation unit.
     x_string: $ => choice(
-      /X'[^'\n]*'/,
-      /X"[^"\n]*"/,
+      /[xX]'[^'\n]*'/,
+      /[xX]"[^"\n]*"/,
     ),
 
     h_string: $ => choice(
-      /H'[^'\n]*'/,
-      /H"[^"\n]*"/,
+      /[hH]'[^'\n]*'/,
+      /[hH]"[^"\n]*"/,
     ),
 
     n_string: $ => choice(
-      /N'[^'\n]*'/,
-      /N"[^"\n]*"/,
-      /NC'[^'\n]*'/,
-      /NC"[^"\n]*"/,
-      /ND'[^'\n]*'/,
-      /ND"[^"\n]*"/,
-      /NX'[^'\n]*'/,
-      /NX"[^"\n]*"/,
+      /[nN]'[^'\n]*'/,
+      /[nN]"[^"\n]*"/,
+      /[nN][cC]'[^'\n]*'/,
+      /[nN][cC]"[^"\n]*"/,
+      /[nN][dD]'[^'\n]*'/,
+      /[nN][dD]"[^"\n]*"/,
+      /[nN][xX]'[^'\n]*'/,
+      /[nN][xX]"[^"\n]*"/,
     ),
 
     _WRITE: $ => /[wW][rR][iI][tT][eE]/,
@@ -3139,6 +3202,10 @@ module.exports = grammar({
       'HIGH-values', 'HIGH-Values', 'HIGH-VALUES',
     ),
     _IDENTIFICATION: $ => /[iI][dD][eE][nN][tT][iI][fF][iI][cC][aA][tT][iI][oO][nN]/,
+    // N2: `ID` is the standard COBOL-85 abbreviation for IDENTIFICATION.
+    // Word-boundary safe: the regex is anchored by tree-sitter's token rules,
+    // and a user word like `ID-FIELD` lexes as _WORD because the longer match wins.
+    _ID: $ => /[iI][dD]/,
     _IF: $ => /[iI][fF]/,
     _IGNORE: $ => /[iI][gG][nN][oO][rR][eE]/,
     _IGNORING: $ => /[iI][gG][nN][oO][rR][iI][nN][gG]/,
@@ -3261,6 +3328,8 @@ module.exports = grammar({
     _PROCEDURES: $ => /[pP][rR][oO][cC][eE][dD][uU][rR][eE][sS]/,
     _PROCEED: $ => /[pP][rR][oO][cC][eE][eE][dD]/,
     _PROGRAM: $ => /[pP][rR][oO][gG][rR][aA][mM]/,
+    _PROCESS: $ => /[pP][rR][oO][cC][eE][sS][sS]/,
+    _CBL: $ => /[cC][bB][lL]/,
     _PROGRAM_ID: $ => /[pP][rR][oO][gG][rR][aA][mM]-[iI][dD]/,
     _PROGRAM_NAME: $ => /[pP][rR][oO][gG][rR][aA][mM]-[nN][aA][mM][eE]/,
     _PROGRAM_POINTER: $ => /[pP][rR][oO][gG][rR][aA][mM]-[pP][oO][iI][nN][tT][eE][rR]/,

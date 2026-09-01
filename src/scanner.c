@@ -155,7 +155,26 @@ bool tree_sitter_COBOL_external_scanner_scan(void *payload, TSLexer *lexer,
 
     if(valid_symbols[LINE_COMMENT]) {
         if(lexer->get_column(lexer) == 6) {
-            if(lexer->lookahead == '*' || lexer->lookahead == '/') {
+            /* N5 (cobol-parsing-resilience Tier 1b): column 7 is the fixed-format
+             * INDICATOR AREA. '*' and '/' mark comments; 'D'/'d' marks a DEBUGGING
+             * line, which is compiled ONLY under `WITH DEBUGGING MODE` and is
+             * otherwise treated exactly as a comment (COBOL-85 §, and what every
+             * mainstream compiler does by default).
+             *
+             * Previously only '*' and '/' were recognised, so a 'D' fell to the else
+             * branch below and its line was advanced into the token stream AS CODE.
+             * A debugging line is usually a bare DISPLAY or an unbalanced fragment,
+             * so it derailed the surrounding statement and the resulting ERROR span
+             * swallowed the rest of the division. Measured: 30 of the 68 residual
+             * damaged production programs carry this, all in dscobol.
+             *
+             * Treating it as a comment is the CONSERVATIVE reading — it loses the
+             * debug line's own (never-executed) references rather than losing the
+             * whole surrounding program. Supporting WITH DEBUGGING MODE properly
+             * would require tracking that clause from the ENVIRONMENT DIVISION,
+             * which the scanner cannot see. */
+            if(lexer->lookahead == '*' || lexer->lookahead == '/'
+               || lexer->lookahead == 'D' || lexer->lookahead == 'd') {
                 while(lexer->lookahead != '\n' && lexer->lookahead != 0) {
                     lexer->advance(lexer, true);
                 }
